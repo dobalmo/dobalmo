@@ -1,0 +1,27 @@
+FUNCION NDQ.RetroalimentarAprendizaje (Peso_Aplicado, Resultado, Metrica_Fallo)
+    DECLARE ID_Ruta AS TEXTO = ACD_MI_NEVE.Origen + "-" + ACD_MI_NEVE.Destino
+    DECLARE Modelo AS ESTRUCTURA = BD.CargarModelo(ID_Ruta) // Carga en vivo
+
+    // 1. Cierre de Bucle (Actualización de Contadores)
+    Modelo.Total_Ejecuciones = Modelo.Total_Ejecuciones + 1
+    
+    // 2. Ajuste del Factor de Confianza
+    SI Resultado ES IGUAL A "FALLO" ENTONCES
+        // Penalización: Reduce la confianza por el riesgo (Ej: -0.2).
+        Modelo.Factor_Confianza = MAX(0.1, Modelo.Factor_Confianza - 0.2)
+        Modelo.Ultima_Metrica_Fallo = Metrica_Fallo
+    SINO SI Resultado ES IGUAL A "EXITO" Y Peso_Aplicado ES MAYOR A 95.0 ENTONCES
+        // Refuerzo: Incrementa la confianza (Ej: +0.05).
+        Modelo.Factor_Confianza = MIN(1.0, Modelo.Factor_Confianza + 0.05)
+    FIN SI
+    
+    // 3. Cálculo de la Tasa Ajustada (El Corazón de la IA)
+    // El AR combina la tasa histórica con el Factor de Confianza para reducir la ambición tras un fallo.
+    DECLARE Tasa_Historica AS DECIMAL = BD.CalcularTasaExito(ID_Ruta) // Tasa pura (Exitos / Total)
+    
+    Modelo.Tasa_Exito_Ajustada = Tasa_Historica * Modelo.Factor_Confianza 
+    
+    // 4. Persistencia (Eficiencia Viva)
+    BD.ActualizarModelo(ID_Ruta, Modelo) // Guarda los cambios inmediatamente
+    IMPRIMIR "   -> AR: Modelo actualizado. Tasa de Exito Ajustada ahora es " + Modelo.Tasa_Exito_Ajustada + "."
+FIN FUNCION
